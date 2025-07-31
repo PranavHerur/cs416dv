@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hawaii Tourism Data Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-annotation/2.5.1/d3-annotation.min.js"
+        integrity="sha512-iBAeBWWWFb8HqSBcrqcz98iIpuVH1la39dEYHtyQ/pGpeCQTQVvLJOWAuhv2Q7JSHp9k7hWA7sGxU3hHJe+tFg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 8px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 8px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 0px;
+            font-size: 18px;
+        }
+
+        .scene-navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 0 20px;
+        }
+
+        .nav-btn {
+            padding: 12px 24px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+            min-width: 100px;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .nav-btn:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .scene-indicator {
+            text-align: center;
+            flex: 1;
+        }
+
+        #scene-title {
+            display: block;
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .scene-dots {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #bdc3c7;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .dot.active {
+            background-color: #e74c3c;
+            transform: scale(1.2);
+        }
+
+        .dot:hover {
+            background-color: #95a5a6;
+        }
+
+        .annotation-group {
+            font-family: Arial, sans-serif;
+        }
+
+        .annotation-note-title {
+            font-weight: bold;
+            font-size: 14px;
+            fill: #2c3e50;
+        }
+
+        .annotation-note-label {
+            font-size: 12px;
+            fill: #34495e;
+        }
+
+        .annotation path {
+            stroke: #2c3e50;
+            stroke-width: 1px;
+        }
+
+        .filter-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 8px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .filter-btn:hover {
+            background-color: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .filter-btn.active {
+            background-color: #e74c3c;
+        }
+
+        .filter-btn.clear {
+            background-color: #17a2b8;
+        }
+
+        .filter-btn.clear:hover {
+            background-color: #138496;
+        }
+
+
+        .scene-content {
+            display: none;
+        }
+
+        .scene-content.active {
+            display: block;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 450px;
+            margin: 15px 0;
+        }
+
+        .scene-description {
+            background-color: #ecf0f1;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+        }
+
+        .tooltip {
+            position: absolute;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border-radius: 5px;
+            pointer-events: none;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .axis {
+            font-size: 12px;
+        }
+
+        .axis-label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .bar {
+            transition: fill 0.3s;
+        }
+
+        .bar:hover {
+            fill: #e74c3c;
+        }
+
+        .legend {
+            font-size: 12px;
+        }
+
+        .world-map {
+            stroke: #333;
+            stroke-width: 0.5px;
+        }
+
+        .visitor-flow {
+            fill: none;
+            stroke-width: 2px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Hawaii Tourism Data Visualization</h1>
+        <p class="subtitle">Exploring Visitor Patterns Before and After the Pandemic</p>
+        <div class="data-source" style="text-align: center; margin-bottom: 20px; font-size: 14px; color: #7f8c8d;">
+            Data Source: <a href="https://dbedt.hawaii.gov/visitor/tourismdata/" target="_blank"
+                style="color: #3498db; text-decoration: none;">Hawaii Tourism Authority</a>
+        </div>
+
+        <div class="scene-navigation">
+            <button class="nav-btn" onclick="previousScene()" id="prev-btn" disabled>Previous</button>
+            <div class="scene-indicator">
+                <span id="scene-title">Scene 1: Total Visitors</span>
+                <div class="scene-dots">
+                    <span class="dot active" data-scene="1"></span>
+                    <span class="dot" data-scene="2"></span>
+                    <span class="dot" data-scene="3"></span>
+                    <span class="dot" data-scene="4"></span>
+                </div>
+            </div>
+            <button class="nav-btn" onclick="nextScene()" id="next-btn">Next</button>
+        </div>
+
+        <div id="scene1" class="scene-content active">
+            <div class="scene-description">
+                <h3>Scene 1: Total Visitor Numbers by Region</h3>
+                <p>This chart shows the total number of visitors to Hawaii from different regions across all years in
+                    our dataset (2015-2024).
+                    Click on bars to highlight specific regions or use the filter buttons below.</p>
+            </div>
+            <div class="filter-controls" id="filter1"></div>
+            <div class="chart-container" id="chart1"></div>
+        </div>
+
+        <div id="scene2" class="scene-content">
+            <div class="scene-description">
+                <h3>Scene 2: Tourism Trends Over Time (2015-2024)</h3>
+                <p>Explore the complete timeline of Hawaii's tourism showing how each region's contribution has changed
+                    over the decade. The stacked area chart reveals long-term trends and the dramatic impact of the
+                    pandemic.</p>
+            </div>
+            <div class="filter-controls" id="filter2"></div>
+            <div class="chart-container" id="chart2"></div>
+        </div>
+
+        <div id="scene3" class="scene-content">
+            <div class="scene-description">
+                <h3>Scene 3: 2019 vs 2020 - Pandemic Impact</h3>
+                <p>Compare visitor numbers from 2019 (pre-pandemic) to 2020 (pandemic year) to see the dramatic impact
+                    COVID-19 had on Hawaii's tourism industry across different regions, the average drop across all
+                    regions was 77.9%. Click bars or use filters to
+                    focus on specific regions.</p>
+            </div>
+            <div class="filter-controls" id="filter3"></div>
+            <div class="chart-container" id="chart3"></div>
+        </div>
+
+        <div id="scene4" class="scene-content">
+            <div class="scene-description">
+                <h3>Scene 4: 2019 vs 2024 - Full Recovery Analysis</h3>
+                <p>Examine how different regions have recovered by comparing 2019 (pre-pandemic) with 2024 (current
+                    period)
+                    visitor numbers. See which regions have fully recovered and which are still rebuilding. Click bars
+                    or use filters to focus on specific regions.</p>
+            </div>
+            <div class="filter-controls" id="filter4"></div>
+            <div class="chart-container" id="chart4"></div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        let data = [];
+        let worldMap = null;
+        let currentScene = 1;
+        const totalScenes = 4;
+        let selectedRegions = new Set();
+        let isFiltering = false;
+        const margin = { top: 40, right: 120, bottom: 80, left: 80 };
+        const width = 1200 - margin.left - margin.right;
+        const height = 450 - margin.top - margin.bottom;
+
+        const colorScale = d3.scaleOrdinal()
+            .domain(['US West', 'US East', 'Japan', 'Canada', 'Europe', 'Oceania', 'China', 'Korea', 'Latin America'])
+            .range(['#3498db', '#2980b9', '#e74c3c', '#c0392b', '#f39c12', '#d35400', '#27ae60', '#16a085', '#9b59b6']);
+
+        const sceneTitles = {
+            1: 'Scene 1: Total Visitors',
+            2: 'Scene 2: Timeline 2015-2024',
+            3: 'Scene 3: 2019 vs 2020',
+            4: 'Scene 4: 2019 vs 2024'
+        };
+
+        function updateNavigation() {
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const sceneTitle = document.getElementById('scene-title');
+
+            prevBtn.disabled = currentScene === 1;
+            nextBtn.disabled = currentScene === totalScenes;
+
+            sceneTitle.textContent = sceneTitles[currentScene];
+
+            document.querySelectorAll('.dot').forEach((dot, index) => {
+                dot.classList.toggle('active', index + 1 === currentScene);
+            });
+        }
+
+        function showScene(sceneNumber) {
+            currentScene = sceneNumber;
+
+            document.querySelectorAll('.scene-content').forEach(scene => {
+                scene.classList.remove('active');
+            });
+
+            document.getElementById(`scene${sceneNumber}`).classList.add('active');
+
+            updateNavigation();
+
+            switch (sceneNumber) {
+                case 1:
+                    renderScene1();
+                    break;
+                case 2:
+                    renderScene2();
+                    break;
+                case 3:
+                    renderScene3();
+                    break;
+                case 4:
+                    renderScene4();
+                    break;
+            }
+        }
+
+        function nextScene() {
+            if (currentScene < totalScenes) {
+                showScene(currentScene + 1);
+            }
+        }
+
+        function previousScene() {
+            if (currentScene > 1) {
+                showScene(currentScene - 1);
+            }
+        }
+
+        async function loadData() {
+            try {
+
+                const csvData = await d3.csv('hawaii_tourism_data.csv');
+
+                data = csvData.map(d => {
+                    const region = d.Group;
+                    const processedRow = {
+                        region: region,
+                        indicator: d.Indicator,
+                        units: d.Units
+                    };
+
+                    Object.keys(d).forEach(key => {
+                        if (key.match(/^\d{4}-\d{2}$/)) {
+                            const value = d[key];
+                            if (value && typeof value === 'string') {
+                                processedRow[key] = +value.replace(/,/g, '') || 0;
+                            } else {
+                                processedRow[key] = +value || 0;
+                            }
+                        }
+                    });
+
+                    return processedRow;
+                });
+
+                initializeNavigation();
+                showScene(1);
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+
+        function initializeNavigation() {
+            document.querySelectorAll('.dot').forEach((dot, index) => {
+                dot.addEventListener('click', () => {
+                    showScene(index + 1);
+                });
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+                    previousScene();
+                } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+                    nextScene();
+                }
+            });
+        }
+
+        function createFilterControls(sceneId, regions) {
+            const filterContainer = document.getElementById(`filter${sceneId}`);
+
+            if (filterContainer.children.length === 0) {
+                const instructions = document.createElement('span');
+                instructions.textContent = 'Filter regions: ';
+                instructions.style.fontWeight = 'bold';
+                instructions.style.marginRight = '10px';
+                filterContainer.appendChild(instructions);
+
+                regions.forEach(region => {
+                    const btn = document.createElement('button');
+                    btn.className = 'filter-btn';
+                    btn.textContent = region;
+                    btn.onclick = () => toggleRegionFilter(region, sceneId);
+                    btn.setAttribute('data-region', region);
+
+                    if (selectedRegions.has(region)) {
+                        btn.classList.add('active');
+                    }
+
+                    filterContainer.appendChild(btn);
+                });
+
+                const clearBtn = document.createElement('button');
+                clearBtn.className = 'filter-btn clear';
+                clearBtn.textContent = 'Clear All';
+                clearBtn.onclick = () => clearAllFilters(sceneId);
+                filterContainer.appendChild(clearBtn);
+            } else {
+                const buttons = filterContainer.querySelectorAll('.filter-btn:not(.clear)');
+                buttons.forEach(btn => {
+                    const region = btn.getAttribute('data-region');
+                    if (selectedRegions.has(region)) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+            }
+        }
+
+        function toggleRegionFilter(region, sceneId) {
+            if (selectedRegions.has(region)) {
+                selectedRegions.delete(region);
+            } else {
+                selectedRegions.add(region);
+            }
+
+            updateFilterButtons(sceneId);
+            applyFiltering(sceneId);
+        }
+
+        function clearAllFilters(sceneId) {
+            selectedRegions.clear();
+            updateFilterButtons(sceneId);
+            applyFiltering(sceneId);
+        }
+
+        function updateFilterButtons(sceneId) {
+            const filterContainer = document.getElementById(`filter${sceneId}`);
+            if (filterContainer) {
+                const buttons = filterContainer.querySelectorAll('.filter-btn:not(.clear)');
+
+                buttons.forEach(btn => {
+                    const region = btn.getAttribute('data-region');
+                    const isActive = selectedRegions.has(region);
+
+                    if (isActive) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+            }
+
+            isFiltering = selectedRegions.size > 0;
+        }
+
+        function applyFiltering(sceneId) {
+            showScene(currentScene);
+        }
+
+        function renderScene1() {
+            const container = d3.select('#chart1');
+            container.selectAll('*').remove();
+
+            let regionTotals = data
+                .filter(d => d.region !== 'Total')
+                .map(d => {
+                    const months = Object.keys(d).filter(key => key.match(/^\d{4}-\d{2}$/));
+                    const total = months.reduce((sum, month) => sum + (d[month] || 0), 0);
+                    return {
+                        region: d.region,
+                        total: total
+                    };
+                })
+                .sort((a, b) => b.total - a.total);
+
+            const allRegions = regionTotals.map(d => d.region);
+
+            if (selectedRegions.size > 0) {
+                regionTotals = regionTotals.filter(d => selectedRegions.has(d.region));
+            }
+
+            createFilterControls(1, allRegions);
+
+            const svg = container.append('svg')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.top + margin.bottom);
+
+            const g = svg.append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+
+            const xScale = d3.scaleBand()
+                .domain(regionTotals.map(d => d.region))
+                .range([0, width])
+                .padding(0.1);
+
+            const yScale = d3.scaleLinear()
+                .domain([0, d3.max(regionTotals, d => d.total)])
+                .range([height, 0]);
+
+            g.selectAll('.bar')
+                .data(regionTotals)
+                .enter().append('rect')
+                .attr('class', 'bar')
+                .attr('x', d => xScale(d.region))
+                .attr('width', xScale.bandwidth())
+                .attr('y', d => yScale(d.total))
+                .attr('height', d => height - yScale(d.total))
+                .attr('fill', d => colorScale(d.region))
+                .on('mouseover', function (event, d) {
+                    showTooltip(event, `${d.region}<br/>Total Visitors: ${d.total.toLocaleString()}`);
+                })
+                .on('mouseout', hideTooltip)
+                .on('click', function (event, d) {
+                    toggleRegionFilter(d.region, 1);
+                })
+                .style('cursor', 'pointer');
+
+            g.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(0,${height})`)
+                .call(d3.axisBottom(xScale))
+                .selectAll('text')
+                .style('text-anchor', 'end')
+                .attr('dx', '-.8em')
+                .attr('dy', '.15em')
+                .attr('transform', 'rotate(-45)');
+
+            g.append('g')
+                .attr('class', 'axis')
+                .call(d3.axisLeft(yScale).tickFormat(d3.format('.2s')));
+
+            g.append('text')
+                .attr('class', 'axis-label')
+                .attr('transform', 'rotate(-90)')
+                .attr('y', 0 - margin.left)
+                .attr('x', 0 - (height / 2))
+                .attr('dy', '1em')
+                .style('text-anchor', 'middle')
+                .text('Total Visitors');
+
+            g.append('text')
+                .attr('class', 'axis-label')
+                .attr('transform', `translate(${width / 2}, ${height + margin.bottom - 20})`)
+                .style('text-anchor', 'middle')
+                .text('Region');
+
+
+            if (worldMap) {
+                const mapWidth = 200;
+                const mapHeight = 120;
+                const mapX = width - mapWidth - 20;
+                const mapY = 20;
+
+                const projection = d3.geoNaturalEarth1()
+                    .scale(35)
+                    .translate([mapWidth / 2, mapHeight / 2]);
+
+                const path = d3.geoPath().projection(projection);
+
+                const mapGroup = g.append('g')
+                    .attr('class', 'world-map-inset')
+                    .attr('transform', `translate(${mapX}, ${mapY})`);
+
+                mapGroup.append('rect')
+                    .attr('width', mapWidth)
+                    .attr('height', mapHeight)
+                    .attr('fill', '#f8f9fa')
+                    .attr('stroke', '#ddd')
+                    .attr('stroke-width', 1);
+
+                mapGroup.selectAll('.country')
+                    .data(worldMap.features)
+                    .enter().append('path')
+                    .attr('class', 'country')
+                    .attr('d', path)
+                    .attr('fill', '#e9ecef')
+                    .attr('stroke', '#fff')
+                    .attr('stroke-width', 0.5);
+
+                const hawaiiCoords = projection([-157.8, 21.3]);
+                if (hawaiiCoords) {
+                    mapGroup.append('circle')
+                        .attr('cx', hawaiiCoords[0])
+                        .attr('cy', hawaiiCoords[1])
+                        .attr('r', 3)
+                        .attr('fill', '#e74c3c');
+
+                    mapGroup.append('text')
+                        .attr('x', hawaiiCoords[0])
+                        .attr('y', hawaiiCoords[1] - 8)
+                        .attr('text-anchor', 'middle')
+                        .attr('font-size', '10px')
+                        .attr('font-weight', 'bold')
+                        .text('Hawaii');
+                }
+
+                mapGroup.append('text')
+                    .attr('x', mapWidth / 2)
+                    .attr('y', -5)
+                    .attr('text-anchor', 'middle')
+                    .attr('font-size', '12px')
+                    .attr('font-weight', 'bold')
+                    .text('Visitor Origins');
+            }
+
+            if (regionTotals.length > 0 && selectedRegions.size === 0) {
+                const usWestData = regionTotals.find(d => d.region === 'US West');
+                if (usWestData) {
+
+                    const annotations = [{
+                        note: {
+                            label: "US visitors (West and East combined) make up the largest portion of Hawaii's tourism",
+                            title: "US Dominance",
+                            wrap: 180,
+                            padding: 10
+                        },
+                        connector: {
+                            end: "arrow"
+                        },
+                        x: xScale('US West') + xScale.bandwidth() / 2,
+                        y: yScale(usWestData.total),
+                        dy: 0,
+                        dx: 200
+                    }];
+
+                    const makeAnnotations = d3.annotation()
+                        .type(d3.annotationLabel)
+                        .annotations(annotations);
+
+                    g.append('g')
+                        .attr('class', 'annotation-group')
+                        .call(makeAnnotations);
+                }
+            }
+        }
+
+        function renderScene3() {
+            const container = d3.select('#chart3');
+            container.selectAll('*').remove();
+
+            let comparison = data
+                .filter(d => d.region !== 'Total')
+                .map(d => {
+                    const months2019 = Object.keys(d).filter(key => key.startsWith('2019-'));
+                    const months2020 = Object.keys(d).filter(key => key.startsWith('2020-'));
+
+                    const total2019 = months2019.reduce((sum, month) => sum + (d[month] || 0), 0);
+                    const total2020 = months2020.reduce((sum, month) => sum + (d[month] || 0), 0);
+
+                    return {
+                        region: d.region,
+                        '2019': total2019,
+                        '2020': total2020,
+                        change: ((total2020 - total2019) / total2019) * 100
+                    };
+                })
+                .sort((a, b) => b['2019'] - a['2019']);
+
+            const allRegions = comparison.map(d => d.region);
+
+            if (selectedRegions.size > 0) {
+                comparison = comparison.filter(d => selectedRegions.has(d.region));
+            }
+
+            createFilterControls(3, allRegions);
+
+            const svg = container.append('svg')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.top + margin.bottom);
+
+            const g = svg.append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+
+            const reshapedData = [];
+            comparison.forEach(d => {
+                reshapedData.push({ region: d.region, year: '2019', value: d['2019'], change: d.change });
+                reshapedData.push({ region: d.region, year: '2020', value: d['2020'], change: d.change });
+            });
+
+            const xScale = d3.scaleBand()
+                .domain(comparison.map(d => d.region))
+                .range([0, width])
+                .padding(0.1);
+
+            const xSubScale = d3.scaleBand()
+                .domain(['2019', '2020'])
+                .range([0, xScale.bandwidth()])
+                .padding(0.05);
+
+            const yScale = d3.scaleLinear()
+                .domain([0, d3.max(reshapedData, d => d.value)])
+                .range([height, 0]);
+
+            const yearColorScale = d3.scaleOrdinal()
+                .domain(['2019', '2020'])
+                .range(['#3498db', '#e74c3c']);
+
+            g.selectAll('.bar-group')
+                .data(comparison)
+                .enter().append('g')
+                .attr('class', 'bar-group')
+                .attr('transform', d => `translate(${xScale(d.region)},0)`)
+                .selectAll('.bar')
+                .data(d => [
+                    { region: d.region, year: '2019', value: d['2019'], change: d.change },
+                    { region: d.region, year: '2020', value: d['2020'], change: d.change }
+                ])
+                .enter().append('rect')
+                .attr('class', 'bar')
+                .attr('x', d => xSubScale(d.year))
+                .attr('width', xSubScale.bandwidth())
+                .attr('y', d => yScale(d.value))
+                .attr('height', d => height - yScale(d.value))
+                .attr('fill', d => yearColorScale(d.year))
+                .on('mouseover', function (event, d) {
+                    const changeText = d.change > 0 ? `+${d.change.toFixed(1)}%` : `${d.change.toFixed(1)}%`;
+                    showTooltip(event, `${d.region} (${d.year})<br/>Visitors: ${d.value.toLocaleString()}<br/>Change from 2019: ${changeText}`);
+                })
+                .on('mouseout', hideTooltip)
+                .on('click', function (event, d) {
+                    toggleRegionFilter(d.region, 2);
+                })
+                .style('cursor', 'pointer');
+
+            g.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(0,${height})`)
+                .call(d3.axisBottom(xScale))
+                .selectAll('text')
+                .style('text-anchor', 'end')
+                .attr('dx', '-.8em')
+                .attr('dy', '.15em')
+                .attr('transform', 'rotate(-45)');
+
+            g.append('g')
+                .attr('class', 'axis')
+                .call(d3.axisLeft(yScale).tickFormat(d3.format('.2s')));
+
+            g.append('text')
+                .attr('class', 'axis-label')
+                .attr('transform', 'rotate(-90)')
+                .attr('y', 0 - margin.left)
+                .attr('x', 0 - (height / 2))
+                .attr('dy', '1em')
+                .style('text-anchor', 'middle')
+                .text('Visitors');
+
+            const legend = g.append('g')
+                .attr('class', 'legend')
+                .attr('transform', `translate(${width - 100}, 20)`);
+
+            ['2019', '2020'].forEach((year, i) => {
+                const legendRow = legend.append('g')
+                    .attr('transform', `translate(0, ${i * 20})`);
+
+                legendRow.append('rect')
+                    .attr('width', 15)
+                    .attr('height', 15)
+                    .attr('fill', yearColorScale(year));
+
+                legendRow.append('text')
+                    .attr('x', 20)
+                    .attr('y', 12)
+                    .text(year);
+            });
+
+            g.selectAll('.change-annotation')
+                .data(comparison)
+                .enter().append('text')
+                .attr('class', 'change-annotation')
+                .attr('x', d => xScale(d.region) + xScale.bandwidth() / 2)
+                .attr('y', d => yScale(Math.max(d['2019'], d['2020'])) - 10)
+                .attr('text-anchor', 'middle')
+                .attr('font-size', '12px')
+                .attr('font-weight', 'bold')
+                .attr('fill', d => d.change < 0 ? '#e74c3c' : '#27ae60')
+                .text(d => {
+                    const changeText = d.change > 0 ? `+${d.change.toFixed(1)}%` : `${d.change.toFixed(1)}%`;
+                    return changeText;
+                });
+
+            if (comparison.length > 0 && selectedRegions.size === 0) {
+                const biggestDrop = comparison.reduce((min, current) =>
+                    current.change < min.change ? current : min
+                );
+
+                const annotations = [{
+                    note: {
+                        label: `${biggestDrop.region} had the biggest drop at ${biggestDrop.change.toFixed(1)}% decline`,
+                        title: "Biggest Impact",
+                        wrap: 150,
+                        padding: 8
+                    },
+                    connector: {
+                        end: "arrow"
+                    },
+                    x: xScale(biggestDrop.region) + xScale.bandwidth() / 2,
+                    y: yScale(biggestDrop['2020']),
+                    dy: -60,
+                    dx: 100
+                }];
+
+                const makeAnnotations = d3.annotation()
+                    .type(d3.annotationLabel)
+                    .annotations(annotations);
+
+                g.append('g')
+                    .attr('class', 'annotation-group')
+                    .call(makeAnnotations);
+            }
+        }
+
+        function renderScene4() {
+            const container = d3.select('#chart4');
+            container.selectAll('*').remove();
+
+            let comparison = data
+                .filter(d => d.region !== 'Total')
+                .map(d => {
+                    const months2019 = Object.keys(d).filter(key => key.startsWith('2019-'));
+                    const months2024 = Object.keys(d).filter(key => key.startsWith('2024-'));
+
+                    const total2019 = months2019.reduce((sum, month) => sum + (d[month] || 0), 0);
+                    const total2024 = months2024.reduce((sum, month) => sum + (d[month] || 0), 0);
+
+                    return {
+                        region: d.region,
+                        '2019': total2019,
+                        '2024': total2024,
+                        change: ((total2024 - total2019) / total2019) * 100,
+                        recoveryRate: (total2024 / total2019) * 100
+                    };
+                })
+                .sort((a, b) => b['2019'] - a['2019']);
+
+            const allRegions = comparison.map(d => d.region);
+
+            if (selectedRegions.size > 0) {
+                comparison = comparison.filter(d => selectedRegions.has(d.region));
+            }
+
+            createFilterControls(4, allRegions);
+
+            const svg = container.append('svg')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.top + margin.bottom);
+
+            const g = svg.append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+
+            const reshapedData = [];
+            comparison.forEach(d => {
+                reshapedData.push({ region: d.region, year: '2019', value: d['2019'], change: d.change, recoveryRate: d.recoveryRate });
+                reshapedData.push({ region: d.region, year: '2024', value: d['2024'], change: d.change, recoveryRate: d.recoveryRate });
+            });
+
+            const xScale = d3.scaleBand()
+                .domain(comparison.map(d => d.region))
+                .range([0, width])
+                .padding(0.1);
+
+            const xSubScale = d3.scaleBand()
+                .domain(['2019', '2024'])
+                .range([0, xScale.bandwidth()])
+                .padding(0.05);
+
+            const yScale = d3.scaleLinear()
+                .domain([0, d3.max(reshapedData, d => d.value)])
+                .range([height, 0]);
+
+            const yearColorScale = d3.scaleOrdinal()
+                .domain(['2019', '2024'])
+                .range(['#3498db', '#27ae60']);
+
+            g.selectAll('.bar-group')
+                .data(comparison)
+                .enter().append('g')
+                .attr('class', 'bar-group')
+                .attr('transform', d => `translate(${xScale(d.region)},0)`)
+                .selectAll('.bar')
+                .data(d => [
+                    { region: d.region, year: '2019', value: d['2019'], change: d.change, recoveryRate: d.recoveryRate },
+                    { region: d.region, year: '2024', value: d['2024'], change: d.change, recoveryRate: d.recoveryRate }
+                ])
+                .enter().append('rect')
+                .attr('class', 'bar')
+                .attr('x', d => xSubScale(d.year))
+                .attr('width', xSubScale.bandwidth())
+                .attr('y', d => yScale(d.value))
+                .attr('height', d => height - yScale(d.value))
+                .attr('fill', d => yearColorScale(d.year))
+                .on('mouseover', function (event, d) {
+                    const changeText = d.change > 0 ? `+${d.change.toFixed(1)}%` : `${d.change.toFixed(1)}%`;
+                    showTooltip(event, `${d.region} (${d.year})<br/>Visitors: ${d.value.toLocaleString()}<br/>Recovery Rate: ${d.recoveryRate.toFixed(1)}%<br/>Change from 2019: ${changeText}`);
+                })
+                .on('mouseout', hideTooltip)
+                .on('click', function (event, d) {
+                    toggleRegionFilter(d.region, 3);
+                })
+                .style('cursor', 'pointer');
+
+            g.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(0,${height})`)
+                .call(d3.axisBottom(xScale))
+                .selectAll('text')
+                .style('text-anchor', 'end')
+                .attr('dx', '-.8em')
+                .attr('dy', '.15em')
+                .attr('transform', 'rotate(-45)');
+
+            g.append('g')
+                .attr('class', 'axis')
+                .call(d3.axisLeft(yScale).tickFormat(d3.format('.2s')));
+
+            g.append('text')
+                .attr('class', 'axis-label')
+                .attr('transform', 'rotate(-90)')
+                .attr('y', 0 - margin.left)
+                .attr('x', 0 - (height / 2))
+                .attr('dy', '1em')
+                .style('text-anchor', 'middle')
+                .text('Visitors');
+
+            const legend = g.append('g')
+                .attr('class', 'legend')
+                .attr('transform', `translate(${width - 100}, 20)`);
+
+            ['2019', '2024'].forEach((year, i) => {
+                const legendRow = legend.append('g')
+                    .attr('transform', `translate(0, ${i * 20})`);
+
+                legendRow.append('rect')
+                    .attr('width', 15)
+                    .attr('height', 15)
+                    .attr('fill', yearColorScale(year));
+
+                legendRow.append('text')
+                    .attr('x', 20)
+                    .attr('y', 12)
+                    .text(year);
+            });
+
+            g.selectAll('.change-annotation')
+                .data(comparison)
+                .enter().append('text')
+                .attr('class', 'change-annotation')
+                .attr('x', d => xScale(d.region) + xScale.bandwidth() / 2)
+                .attr('y', d => yScale(Math.max(d['2019'], d['2024'])) - 10)
+                .attr('text-anchor', 'middle')
+                .attr('font-size', '12px')
+                .attr('font-weight', 'bold')
+                .attr('fill', d => d.change < 0 ? '#e74c3c' : '#27ae60')
+                .text(d => {
+                    const changeText = d.change > 0 ? `+${d.change.toFixed(1)}%` : `${d.change.toFixed(1)}%`;
+                    return changeText;
+                });
+
+            if (comparison.length > 0 && selectedRegions.size === 0) {
+                const strongestRecovery = comparison.reduce((prev, current) =>
+                    (current.recoveryRate > prev.recoveryRate) ? current : prev
+                );
+
+                const annotations = [{
+                    note: {
+                        label: `${strongestRecovery.region} shows the strongest recovery at ${strongestRecovery.recoveryRate.toFixed(1)}% of 2019 levels`,
+                        title: "Recovery Leaders"
+                    },
+                    x: xScale(strongestRecovery.region) + xScale.bandwidth() / 2,
+                    y: yScale(strongestRecovery['2024']),
+                    dy: -80,
+                    dx: 50
+                }];
+
+                const makeAnnotations = d3.annotation()
+                    .type(d3.annotationLabel)
+                    .annotations(annotations);
+
+                g.append('g')
+                    .attr('class', 'annotation-group')
+                    .call(makeAnnotations);
+            }
+        }
+
+        function showTooltip(event, content) {
+            const tooltip = d3.select('#tooltip');
+            tooltip.style('opacity', 1)
+                .html(content)
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY - 10) + 'px');
+        }
+
+        function hideTooltip() {
+            d3.select('#tooltip').style('opacity', 0);
+        }
+
+        function renderScene2() {
+            const container = d3.select('#chart2');
+            container.selectAll('*').remove();
+
+            const yearData = [];
+            const regions = data.filter(d => d.region !== 'Total').map(d => d.region);
+
+            for (let year = 2015; year <= 2024; year++) {
+                const yearEntry = { year: year };
+                let yearTotal = 0;
+
+                regions.forEach(region => {
+                    const regionData = data.find(d => d.region === region);
+                    if (regionData) {
+                        let regionYearTotal = 0;
+                        for (let month = 1; month <= 12; month++) {
+                            const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
+                            if (regionData[monthKey] !== undefined) {
+                                regionYearTotal += regionData[monthKey];
+                            }
+                        }
+                        yearEntry[region] = regionYearTotal;
+                        yearTotal += regionYearTotal;
+                    } else {
+                        yearEntry[region] = 0;
+                    }
+                });
+                yearEntry.total = yearTotal;
+                yearData.push(yearEntry);
+            }
+
+            const filteredRegions = selectedRegions.size > 0 ?
+                regions.filter(region => selectedRegions.has(region)) : regions;
+
+            const stack = d3.stack()
+                .keys(filteredRegions)
+                .order(d3.stackOrderNone)
+                .offset(d3.stackOffsetNone);
+
+            const stackedData = stack(yearData);
+
+            const xScale = d3.scaleLinear()
+                .domain(d3.extent(yearData, d => d.year))
+                .range([0, width]);
+
+            const maxY = d3.max(stackedData, layer => d3.max(layer, d => d[1]));
+            const yScale = d3.scaleLinear()
+                .domain([0, maxY])
+                .range([height, 0]);
+
+            const svg = container.append('svg')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.top + margin.bottom);
+
+            const g = svg.append('g')
+                .attr('transform', `translate(${margin.left}, ${margin.top})`);
+
+            const area = d3.area()
+                .x(d => xScale(d.data.year))
+                .y0(d => yScale(d[0]))
+                .y1(d => yScale(d[1]))
+                .curve(d3.curveMonotoneX);
+
+            g.selectAll('.area')
+                .data(stackedData)
+                .enter().append('path')
+                .attr('class', 'area')
+                .attr('d', area)
+                .attr('fill', d => colorScale(d.key))
+                .attr('opacity', 0.8)
+                .on('mouseover', function (event, d) {
+                    d3.select(this).attr('opacity', 1);
+                })
+                .on('mousemove', function (event, d) {
+                    // Find the closest data point to mouse position
+                    const [mouseX] = d3.pointer(event, this);
+                    const year = Math.round(xScale.invert(mouseX));
+                    const yearPoint = d.find(point => point.data.year === year);
+                    const regionValue = yearPoint ? yearPoint.data[d.key] : 0;
+
+                    const indicatorDot = g.select('.tooltip-indicator');
+                    if (indicatorDot.empty()) {
+                        g.append('circle')
+                            .attr('class', 'tooltip-indicator')
+                            .attr('r', 4)
+                            .attr('fill', '#e74c3c')
+                            .attr('stroke', '#fff')
+                            .attr('stroke-width', 2);
+                    }
+
+                    const stackLayer = stackedData.find(layer => layer.key === d.key);
+                    const dataPoint = stackLayer ? stackLayer.find(point => point.data.year === year) : null;
+                    if (dataPoint) {
+                        g.select('.tooltip-indicator')
+                            .attr('cx', xScale(year))
+                            .attr('cy', yScale(dataPoint[1]))
+                            .style('opacity', 1);
+                    }
+
+                    showTooltip(event, `${d.key}<br>Year: ${year}<br>Visitors: ${d3.format(',')(regionValue)}`);
+                })
+                .on('mouseout', function (event, d) {
+                    d3.select(this).attr('opacity', 0.8);
+                    g.select('.tooltip-indicator').style('opacity', 0);
+                    hideTooltip();
+                });
+
+            g.append('g')
+                .attr('class', 'x-axis')
+                .attr('transform', `translate(0, ${height})`)
+                .call(d3.axisBottom(xScale).tickFormat(d3.format('d')));
+
+            g.append('g')
+                .attr('class', 'y-axis')
+                .call(d3.axisLeft(yScale).tickFormat(d => d3.format('.1s')(d)));
+
+            g.append('text')
+                .attr('class', 'axis-label')
+                .attr('text-anchor', 'middle')
+                .attr('x', width / 2)
+                .attr('y', height + margin.bottom - 20)
+                .text('Year');
+
+            g.append('text')
+                .attr('class', 'axis-label')
+                .attr('text-anchor', 'middle')
+                .attr('transform', 'rotate(-90)')
+                .attr('x', -height / 2)
+                .attr('y', -margin.left + 20)
+                .text('Visitors');
+
+            const allRegions = data.filter(d => d.region !== 'Total').map(d => d.region);
+            createFilterControls(2, allRegions);
+
+            if (selectedRegions.size === 0) {
+                const pandemicYear = yearData.find(d => d.year === 2020);
+                const preYear = yearData.find(d => d.year === 2019);
+                const dropPercent = ((pandemicYear.total - preYear.total) / preYear.total * 100);
+
+                const annotations = [{
+                    note: {
+                        label: `The pandemic caused a ${Math.abs(dropPercent).toFixed(1)}% drop in total tourism in 2020, clearly visible in the dramatic reduction of all stacked areas`,
+                        title: "Pandemic Impact on Timeline",
+                        wrap: 200,
+                        padding: 10
+                    },
+                    connector: {
+                        end: "arrow"
+                    },
+                    x: xScale(2020),
+                    y: yScale(pandemicYear.total),
+                    dy: -130,
+                    dx: 50
+                }];
+
+                const makeAnnotations = d3.annotation()
+                    .type(d3.annotationLabel)
+                    .annotations(annotations);
+
+                g.append('g')
+                    .attr('class', 'annotation-group')
+                    .call(makeAnnotations);
+            }
+        }
+
+        loadData();
+    </script>
+</body>
+
+</html>
